@@ -2,7 +2,7 @@
 
 > An AI co-pilot for teachers: RAG-grounded lesson plans and worksheets that cut prep time, with the teacher always in the loop.
 
-**Status:** Phase 3 in progress (see [roadmap](docs/roadmap.md)).
+**Status:** Phase 3 done; groundedness filter added (see [roadmap](docs/roadmap.md)).
 
 ## Problem
 Teachers spend a large share of their week on grading, worksheet creation and lesson planning. Existing tools are mostly English-first and not aligned to Indian curricula.
@@ -44,6 +44,14 @@ GRADIENT_BACKEND=hf GRADIENT_ADAPTER=models/gradient-qg-lora python app.py    # 
 ```
 Results are in [docs/results.md](docs/results.md) once you have run the evaluation.
 
+## Groundedness check
+Every generated question and answer is verified against the passage it came from; pairs with
+content words missing from the passage are dropped and counted (shown in the app status line).
+```bash
+python scripts/evaluate_grounding.py --adapter models/gradient-qg-lora --n 100   # writes docs/grounding.md
+```
+It is a lexical check: it catches invented entities and off-passage answers, not every wrong answer.
+
 ## Project layout
 ```
 gradient/
@@ -52,6 +60,7 @@ gradient/
   ingest.py      # .txt/.md/.pdf loader
   generator.py   # prompts, grounding check, LLM backends (+ LoRA adapter loading)
   qa.py          # quiz mode: question + answer per passage
+  grounding.py   # question/answer support check against the source passage
   data.py        # SQuAD -> training examples
   evaluate.py    # ROUGE / BLEU
   config.py      # env-driven factory

@@ -13,3 +13,13 @@ def squad_row_to_examples(row: dict) -> list[dict]:
 
 def build_examples(rows) -> list[dict]:
     return [ex for row in rows for ex in squad_row_to_examples(row)]
+
+
+def sample_squad_passages(n: int, seed: int = 42) -> list[str]:
+    """n distinct validation passages sampled at random (seeded) from the whole SQuAD validation set."""
+    import random
+
+    from datasets import load_dataset
+
+    contexts = sorted({r["context"] for r in load_dataset("rajpurkar/squad", split="validation")})
+    return random.Random(seed).sample(contexts, n)
