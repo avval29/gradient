@@ -2,7 +2,7 @@
 
 > An AI co-pilot for teachers: RAG-grounded lesson plans and worksheets that cut prep time, with the teacher always in the loop.
 
-**Status:** Phase 2 in progress (see [roadmap](docs/roadmap.md)).
+**Status:** Phase 3 in progress (see [roadmap](docs/roadmap.md)).
 
 ## Problem
 Teachers spend a large share of their week on grading, worksheet creation and lesson planning. Existing tools are mostly English-first and not aligned to Indian curricula.
@@ -33,14 +33,29 @@ GRADIENT_DATA=data/private GRADIENT_RETRIEVER=dense GRADIENT_BACKEND=hf python a
 | `GRADIENT_MODEL` | any HF seq2seq model id | `google/flan-t5-base` |
 | `GRADIENT_DATA` | folder of curriculum files | `data/sample` |
 
+## Fine-tuning and evaluation (Phase 3)
+Gradient's quiz mode writes one question and answer per retrieved passage. To teach FLAN-T5 that task,
+fine-tune it with LoRA on SQuAD, then measure the gain:
+```bash
+python scripts/finetune_lora.py --model google/flan-t5-small --max-train 64   # quick smoke test
+python scripts/finetune_lora.py --max-train 1000                              # real run
+python scripts/evaluate_model.py --adapter models/gradient-qg-lora --n 100    # writes docs/results.md
+GRADIENT_BACKEND=hf GRADIENT_ADAPTER=models/gradient-qg-lora python app.py    # use the adapter
+```
+Results are in [docs/results.md](docs/results.md) once you have run the evaluation.
+
 ## Project layout
 ```
 gradient/
   rag.py         # chunking + TF-IDF retriever
   embeddings.py  # dense (sentence-transformers) retriever
   ingest.py      # .txt/.md/.pdf loader
-  generator.py   # prompts, grounding check, LLM backends
+  generator.py   # prompts, grounding check, LLM backends (+ LoRA adapter loading)
+  qa.py          # quiz mode: question + answer per passage
+  data.py        # SQuAD -> training examples
+  evaluate.py    # ROUGE / BLEU
   config.py      # env-driven factory
+scripts/          # finetune_lora.py, evaluate_model.py
 app.py           # Gradio UI
 data/sample/     # placeholder curriculum text (replace with your own NCERT notes)
 tests/
