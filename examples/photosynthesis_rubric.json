@@ -1,0 +1,11 @@
+{
+  "question": "Explain how plants make food by photosynthesis.",
+  "criteria": [
+    {"name": "Inputs", "points": 2, "description": "Plants use sunlight, water and carbon dioxide.",
+     "keywords": ["sunlight|light", "water", "carbon dioxide|co2"]},
+    {"name": "Where it happens", "points": 1, "description": "It takes place in the leaves, in chloroplasts with chlorophyll.",
+     "keywords": ["leaf|leaves|chloroplast", "chlorophyll"]},
+    {"name": "Products", "points": 2, "description": "It produces glucose (food) and releases oxygen.",
+     "keywords": ["glucose|sugar|food|starch", "oxygen"]}
+  ]
+}

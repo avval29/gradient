@@ -5,6 +5,7 @@ GRADIENT_RETRIEVER  tfidf | dense                         (default: tfidf)
 GRADIENT_BACKEND    echo | hf                             (default: echo)
 GRADIENT_MODEL      HF model id for the hf backend        (default: google/flan-t5-base)
 GRADIENT_ADAPTER    path to a LoRA adapter folder         (default: none)
+GRADIENT_GRADER_SEMANTIC  1 = add semantic matching to grading (default: off)
 """
 import os
 
@@ -37,3 +38,12 @@ def make_backend(kind: str | None = None) -> LLMBackend:
             adapter=os.getenv("GRADIENT_ADAPTER") or None,
         )
     raise ValueError(f"Unknown backend '{kind}' (use echo or hf)")
+
+
+def make_encoder():
+    """Sentence encoder for semantic grading; None (lexical only) unless GRADIENT_GRADER_SEMANTIC=1."""
+    if os.getenv("GRADIENT_GRADER_SEMANTIC") == "1":
+        from gradient.embeddings import sentence_transformer_encoder
+
+        return sentence_transformer_encoder()
+    return None
