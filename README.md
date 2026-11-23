@@ -2,7 +2,7 @@
 
 > An AI co-pilot for teachers: RAG-grounded lesson plans and worksheets that cut prep time, with the teacher always in the loop.
 
-**Status:** Phase 3 done; groundedness filter added (see [roadmap](docs/roadmap.md)).
+**Status:** Phase 4a done (typed-answer grading); handwriting OCR next (see [roadmap](docs/roadmap.md)).
 
 ## Problem
 Teachers spend a large share of their week on grading, worksheet creation and lesson planning. Existing tools are mostly English-first and not aligned to Indian curricula.
@@ -52,6 +52,25 @@ python scripts/evaluate_grounding.py --adapter models/gradient-qg-lora --n 100  
 ```
 It is a lexical check: it catches invented entities and off-passage answers, not every wrong answer.
 
+## Grading assistant (draft only)
+The **Grade (draft)** tab compares a typed student answer with a teacher-written rubric and suggests a
+score with evidence (found / missing terms, matching sentence). The teacher must approve or edit before
+anything is saved, and every correction is logged to `data/private/grading_log.jsonl` (gitignored: it
+contains student work).
+
+Rubric format, one criterion per line: `points | name | description | keywords` (use `|` inside the
+keywords for alternatives). Matching ignores plurals and tolerates small spelling mistakes. Add
+`GRADIENT_GRADER_SEMANTIC=1` for embedding-based matching of paraphrases.
+
+Uncertain drafts (borderline evidence, very short answers) are flagged for review. Known limit: wording
+the rubric did not anticipate can be under-credited, which is why the teacher stays in the loop.
+
+**Measuring accuracy:** put real student answers and the teacher's marks in a CSV (`answer,score`) and run
+```bash
+python scripts/evaluate_grading.py --rubric your_rubric.json --csv your_graded_answers.csv --out docs/grading_eval.md
+```
+`examples/` contains hand-written demo data only; do not quote accuracy from it.
+
 ## Project layout
 ```
 gradient/
@@ -60,11 +79,13 @@ gradient/
   ingest.py      # .txt/.md/.pdf loader
   generator.py   # prompts, grounding check, LLM backends (+ LoRA adapter loading)
   qa.py          # quiz mode: question + answer per passage
+  grading.py     # rubric-based draft grading, teacher approval, feedback log
   grounding.py   # question/answer support check against the source passage
   data.py        # SQuAD -> training examples
   evaluate.py    # ROUGE / BLEU
   config.py      # env-driven factory
-scripts/          # finetune_lora.py, evaluate_model.py
+scripts/          # finetune_lora.py, evaluate_model.py, evaluate_grounding.py, evaluate_grading.py
+examples/         # demo rubric and answers (not a benchmark)
 app.py           # Gradio UI
 data/sample/     # placeholder curriculum text (replace with your own NCERT notes)
 tests/
