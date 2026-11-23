@@ -1,14 +1,12 @@
 """Gradient: Gradio UI. Run with `python app.py`.
-Set GRADIENT_BACKEND=hf to use FLAN-T5 (needs transformers + torch)."""
-import os
-
+See gradient/config.py for the GRADIENT_* environment switches."""
 import gradio as gr
 
-from gradient.generator import EchoBackend, HFBackend, generate
-from gradient.rag import Retriever, load_corpus
+from gradient.config import make_backend, make_retriever
+from gradient.generator import generate
 
-retriever = Retriever(load_corpus(os.getenv("GRADIENT_DATA", "data/sample")))
-backend = HFBackend() if os.getenv("GRADIENT_BACKEND") == "hf" else EchoBackend()
+retriever = make_retriever()
+backend = make_backend()
 
 
 def run(mode, topic, grade, difficulty):
