@@ -81,6 +81,7 @@ class Result:
     text: str
     sources: list[str]
     grounded: bool
+    rejected: int = 0  # candidate questions dropped by the groundedness check
 
 
 MAX_CONTEXT_WORDS = 250  # keeps prompts inside FLAN-T5's 512-token window

@@ -18,13 +18,49 @@ def test_quiz_refuses_off_topic():
     assert not res.grounded and res.text == REFUSAL
 
 
-def test_duplicate_questions_are_skipped():
-    class Same(EchoBackend):
-        def generate(self, prompt):
-            return "Same question?" if prompt.startswith("generate question:") else "Answer."
+def _two_chunks(a, b):
+    from gradient.rag import Chunk
 
-    res = generate_quiz("photosynthesis plants sunlight", _r(), Same())
-    assert res.text.count("Same question?") == 1
+    return Retriever([Chunk(a, "t.txt", 0), Chunk(b, "t.txt", 1)])
+
+
+class Scripted(EchoBackend):
+    """Returns canned question/answer pairs keyed on a word in the prompt."""
+
+    def __init__(self, table):
+        self.table = table
+
+    def generate(self, prompt):
+        for key, (q, a) in self.table.items():
+            if key in prompt:
+                return q if prompt.startswith("generate question:") else a
+        return "?"
+
+
+def test_duplicate_questions_are_skipped():
+    same = "Plants make food using sunlight."
+    r = _two_chunks(same, same)
+    res = generate_quiz("plants make food sunlight", r, Scripted({"Plants": ("What do plants make?", "food")}))
+    assert res.text.count("What do plants make?") == 1
+
+
+def test_unsupported_questions_are_dropped_and_counted():
+    r = _two_chunks("Plants make food using sunlight.", "The Moon orbits the Earth every month.")
+    backend = Scripted({
+        "Plants": ("What do plants make?", "food"),
+        "Moon": ("Who invented the telephone?", "Bell"),  # hallucinated
+    })
+    res = generate_quiz("plants sunlight moon orbits earth", r, backend)
+    assert res.grounded and res.rejected == 1
+    assert "telephone" not in res.text and "plants make" in res.text
+
+
+def test_all_unsupported_returns_message():
+    from gradient.qa import NO_SUPPORTED
+
+    r = _two_chunks("The Moon orbits the Earth every month.", "The Moon has craters.")
+    res = generate_quiz("moon orbits craters", r, Scripted({"Moon": ("Who invented the telephone?", "Bell")}))
+    assert not res.grounded and res.text == NO_SUPPORTED and res.rejected >= 1
 
 
 def test_prompt_formats():

@@ -16,6 +16,8 @@ def run(mode, topic, grade, difficulty):
     else:
         res = generate(mode, topic, int(grade), difficulty, retriever, backend)
     status = "Grounded in: " + ", ".join(res.sources) if res.grounded else "Not grounded - refused"
+    if res.rejected:
+        status += f" | {res.rejected} question(s) dropped: not supported by your notes"
     return res.text, status
 
 
