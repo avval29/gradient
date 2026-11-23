@@ -2,7 +2,7 @@
 
 > An AI co-pilot for teachers: RAG-grounded lesson plans and worksheets that cut prep time, with the teacher always in the loop.
 
-**Status:** Phase 1 in progress (see [roadmap](docs/roadmap.md)).
+**Status:** Phase 2 in progress (see [roadmap](docs/roadmap.md)).
 
 ## Problem
 Teachers spend a large share of their week on grading, worksheet creation and lesson planning. Existing tools are mostly English-first and not aligned to Indian curricula.
@@ -20,11 +20,27 @@ pytest                # run tests
 python app.py         # launch the Gradio UI
 ```
 
+## Using a real model and your own notes (Phase 2)
+```bash
+pip install -r requirements-llm.txt
+# put your own .txt / .md / .pdf notes in data/private/ (it is gitignored)
+GRADIENT_DATA=data/private GRADIENT_RETRIEVER=dense GRADIENT_BACKEND=hf python app.py
+```
+| Variable | Options | Default |
+|---|---|---|
+| `GRADIENT_RETRIEVER` | `tfidf`, `dense` | `tfidf` |
+| `GRADIENT_BACKEND` | `echo`, `hf` | `echo` |
+| `GRADIENT_MODEL` | any HF seq2seq model id | `google/flan-t5-base` |
+| `GRADIENT_DATA` | folder of curriculum files | `data/sample` |
+
 ## Project layout
 ```
 gradient/
-  rag.py         # chunking + retrieval (TF-IDF in Phase 1)
-  generator.py   # prompt building, grounding check, LLM backends
+  rag.py         # chunking + TF-IDF retriever
+  embeddings.py  # dense (sentence-transformers) retriever
+  ingest.py      # .txt/.md/.pdf loader
+  generator.py   # prompts, grounding check, LLM backends
+  config.py      # env-driven factory
 app.py           # Gradio UI
 data/sample/     # placeholder curriculum text (replace with your own NCERT notes)
 tests/

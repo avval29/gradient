@@ -1,0 +1,11 @@
+# Real models and PDF support (large downloads: install only when you need them)
+-r requirements.txt
+transformers>=4.40
+torch
+sentence-transformers>=2.7
+pypdf>=4.0
+# Phase 3:
+# peft
+# datasets
+# evaluate
+# rouge_score
