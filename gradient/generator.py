@@ -25,14 +25,26 @@ TEMPLATES = {
 }
 
 
+QG_PREFIX = "generate question: "
+ANS_PREFIX = "answer question: "
+
+
 class LLMBackend(Protocol):
     def generate(self, prompt: str) -> str: ...
+
+
+def _first_sentence(text: str) -> str:
+    return text.split(". ")[0].strip().rstrip(".")
 
 
 class EchoBackend:
     """Offline stand-in so the pipeline runs and tests without downloading a model."""
 
     def generate(self, prompt: str) -> str:
+        if prompt.startswith(QG_PREFIX):
+            return f"What is stated about: {_first_sentence(prompt[len(QG_PREFIX):])[:60]}?"
+        if prompt.startswith(ANS_PREFIX):
+            return _first_sentence(prompt.split(" context: ", 1)[-1]) + "."
         context = prompt.split("Context:\n", 1)[-1].rsplit("\n\n", 1)[0]
         return f"[draft from context - plug in a real LLM backend]\n{context}"
 
@@ -44,11 +56,16 @@ class HFBackend:
     for better quality (bigger download), or a LoRA-fine-tuned model in Phase 3.
     """
 
-    def __init__(self, model: str = "google/flan-t5-base", max_new_tokens: int = 300):
+    def __init__(self, model: str = "google/flan-t5-base", max_new_tokens: int = 300, adapter: str | None = None):
         from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # lazy: keeps base install light
 
         self._tok = AutoTokenizer.from_pretrained(model)
         self._model = AutoModelForSeq2SeqLM.from_pretrained(model)
+        if adapter:  # LoRA weights produced by scripts/finetune_lora.py
+            from peft import PeftModel
+
+            self._model = PeftModel.from_pretrained(self._model, adapter)
+        self._model.eval()
         self._max_new = max_new_tokens
 
     def generate(self, prompt: str) -> str:
