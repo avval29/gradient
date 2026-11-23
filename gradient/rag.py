@@ -42,6 +42,8 @@ def load_corpus(directory: str | Path) -> list[Chunk]:
 
 
 class Retriever:
+    min_score = 0.08  # TF-IDF scale; below this a hit is treated as irrelevant
+
     def __init__(self, chunks: list[Chunk]):
         if not chunks:
             raise ValueError("Retriever needs at least one chunk")
