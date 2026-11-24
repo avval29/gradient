@@ -1,4 +1,5 @@
 """ROUGE and BLEU scoring (scores are on a 0-100 scale)."""
+import numpy as np
 
 
 def score(predictions: list[str], references: list[str]) -> dict[str, float]:
@@ -52,21 +53,28 @@ def agreement(predicted: list[float], teacher: list[float]) -> dict[str, float |
     """How closely draft scores match teacher scores (same scale, e.g. 0-5).
 
     mae: mean absolute error | exact: % equal after rounding | within1: % within 1 point
-    qwk: quadratic weighted kappa on rounded scores (None if undefined, e.g. all scores identical)
+    qwk: quadratic weighted kappa on rounded scores | pearson: correlation on the raw scores
+    qwk and pearson are None when undefined (e.g. all scores identical).
     """
     if len(predicted) != len(teacher) or not predicted:
         raise ValueError("predicted and teacher must be non-empty and equal length")
     import math
+    import warnings
 
     from sklearn.metrics import cohen_kappa_score
 
     n = len(predicted)
-    p = [round(x) for x in predicted]
-    t = [round(x) for x in teacher]
-    qwk = cohen_kappa_score(p, t, weights="quadratic")
+    p = [math.floor(x + 0.5) for x in predicted]  # half-up: Python's round() sends 2.5 to 2 but 3.5 to 4
+    t = [math.floor(x + 0.5) for x in teacher]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # sklearn warns when labels are constant; we return None instead
+        qwk = cohen_kappa_score(p, t, weights="quadratic")
+    x, y = np.asarray(predicted, float), np.asarray(teacher, float)
+    pearson = float(np.corrcoef(x, y)[0, 1]) if n > 1 and x.std() > 0 and y.std() > 0 else None
     return {
         "mae": sum(abs(a - b) for a, b in zip(predicted, teacher)) / n,
         "exact": 100 * sum(a == b for a, b in zip(p, t)) / n,
         "within1": 100 * sum(abs(a - b) <= 1 for a, b in zip(p, t)) / n,
         "qwk": None if math.isnan(qwk) else float(qwk),
+        "pearson": pearson,
     }
