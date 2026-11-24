@@ -10,7 +10,7 @@
 | 4a-eval | Benchmark the grader on the Mohler dataset vs human agreement and a median baseline | Module 3 (evaluation) | Code done; run it |
 | 4b | Handwritten answer photo -> line cutting -> TrOCR -> teacher correction -> grader | Module 1, Lab 3 | Code done; needs testing on real photos |
 | 5 | Voice dictation of lesson notes (STT) + regional-language output | Lab 4 (TTS/STT) | Planned |
-| 6 | Feedback loop (flag bad drafts), logging, monitoring | Module 4 | Planned |
+| 6 | Feedback loop (thumbs + teacher corrections), monitoring report | Module 4 | Code done; needs real usage data |
 
 ## Principles
 - Never auto-finalize a grade.
