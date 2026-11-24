@@ -4,7 +4,7 @@
 
 > An AI co-pilot for teachers: RAG-grounded lesson plans and worksheets that cut prep time, with the teacher always in the loop.
 
-**Status:** Phase 4a done (typed-answer grading); handwriting OCR next (see [roadmap](docs/roadmap.md)).
+**Status:** Core features implemented; finalizing documentation and demo deployment. Handwriting OCR is implemented, but real-photo line segmentation needs further improvement (see [roadmap](docs/roadmap.md)).
 
 ## Results at a glance
 All measured on my own machine; details, caveats and reproduction commands are in the sections below and in `docs/`.
@@ -110,7 +110,7 @@ python scripts/read_handwriting.py photo.jpg --segment-only --save-lines /tmp/li
 python scripts/read_handwriting.py photo.jpg                                          # transcribe
 python scripts/evaluate_ocr.py --dir data/private/handwriting --rubric your_rubric.json --out docs/ocr_eval.md
 ```
-Limits: TrOCR is trained on single lines of English handwriting; line cutting assumes dark ink on lighter paper, a
+Limits: Real-photo testing found blank line crops and occasionally merged handwritten lines; OCR accuracy has not yet been measured. TrOCR is trained on single lines of English handwriting; line cutting assumes dark ink on lighter paper, a
 roughly straight page and clear gaps between lines. Keep photos of real students' work out of git
 (`data/private/` is ignored). Set `GRADIENT_OCR_MODEL` to try another model.
 
