@@ -11,6 +11,7 @@
 | 4b | Handwritten answer photo -> line cutting -> TrOCR -> teacher correction -> grader | Module 1, Lab 3 | Code done; needs testing on real photos |
 | 5 | Voice dictation of lesson notes (STT) + regional-language output | Lab 4 (TTS/STT) | Planned |
 | 6 | Feedback loop (thumbs + teacher corrections), monitoring report | Module 4 | Code done; needs real usage data |
+| 7 | Public demo on a Hugging Face Space (demo mode, no data saved) | Module 4 (deployment) | Code done; publish and add the link |
 
 ## Principles
 - Never auto-finalize a grade.

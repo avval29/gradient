@@ -125,6 +125,18 @@ python scripts/analyze_feedback.py --out docs/feedback_report.md
 ```
 Logs live in `data/private/` (gitignored) because they contain student work; the report contains aggregates only.
 
+## Live demo (Hugging Face Space)
+The demo runs the same app in `GRADIENT_DEMO=1` mode: nothing visitors type is saved and photo upload is off.
+```bash
+pip install huggingface_hub
+export HF_TOKEN=...          # your own WRITE token (never commit it or paste it anywhere public)
+python scripts/publish_hf.py --user YOUR_HF_USERNAME     # uploads the LoRA adapter (if present) and the Space
+```
+Without `models/gradient-qg-lora` it publishes a lite demo with no language model (crude quiz questions, but
+grading works fully). With the adapter it runs FLAN-T5 + LoRA on the free CPU tier, which is slow (tens of seconds
+per quiz). `python scripts/make_space.py --out space_build` builds the Space folder without uploading anything.
+Demo link: _add it here after publishing_.
+
 ## Project layout
 ```
 gradient/
@@ -141,7 +153,7 @@ gradient/
   data.py        # SQuAD -> training examples
   evaluate.py    # ROUGE / BLEU
   config.py      # env-driven factory
-scripts/          # finetune_lora.py, evaluate_model.py, evaluate_grounding.py, evaluate_grading.py, evaluate_mohler.py, read_handwriting.py, evaluate_ocr.py, analyze_feedback.py
+scripts/          # finetune_lora.py, evaluate_model.py, evaluate_grounding.py, evaluate_grading.py, evaluate_mohler.py, read_handwriting.py, evaluate_ocr.py, analyze_feedback.py, make_space.py, publish_hf.py
 examples/         # demo rubric and answers (not a benchmark)
 app.py           # Gradio UI
 data/sample/     # placeholder curriculum text (replace with your own NCERT notes)
