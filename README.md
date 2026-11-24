@@ -78,7 +78,7 @@ into a development half and a disjoint test half; calibration is fitted on the d
 reported number is measured on the unseen test questions. It is compared with two human graders agreeing with each
 other, an "always predict the median" baseline, and an answer-length baseline.
 ```bash
-python scripts/evaluate_mohler.py --out docs/mohler_eval.md
+python scripts/evaluate_mohler.py --n-splits 10 --out docs/mohler_eval.md   # mean ± sd over 10 random question splits
 ```
 Finding so far: raw keyword-coverage scores rank answers about as well as two humans agree (Pearson ~0.5) but are
 badly scaled (they under-score by about two points), so they are calibrated before use. Rubrics are auto-built
