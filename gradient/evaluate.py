@@ -78,3 +78,28 @@ def agreement(predicted: list[float], teacher: list[float]) -> dict[str, float |
         "qwk": None if math.isnan(qwk) else float(qwk),
         "pearson": pearson,
     }
+
+
+def edit_distance(a, b) -> int:
+    """Levenshtein distance between two sequences (strings or lists of words)."""
+    prev = list(range(len(b) + 1))
+    for i, x in enumerate(a, 1):
+        cur = [i]
+        for j, y in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (x != y)))
+        prev = cur
+    return prev[-1]
+
+
+def ocr_error_rates(predicted: list[str], reference: list[str]) -> dict[str, float]:
+    """Corpus-level character and word error rates in % (whitespace-normalised; case is kept)."""
+    if len(predicted) != len(reference) or not predicted:
+        raise ValueError("predicted and reference must be non-empty and equal length")
+    norm = lambda t: " ".join(t.split())  # noqa: E731
+    pairs = [(norm(p), norm(r)) for p, r in zip(predicted, reference)]
+    chars = sum(len(r) for _, r in pairs)
+    words = sum(len(r.split()) for _, r in pairs)
+    if chars == 0 or words == 0:
+        raise ValueError("reference texts are empty")
+    return {"cer": 100 * sum(edit_distance(p, r) for p, r in pairs) / chars,
+            "wer": 100 * sum(edit_distance(p.split(), r.split()) for p, r in pairs) / words}
