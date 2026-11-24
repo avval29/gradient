@@ -11,3 +11,4 @@ models/
 .vscode/
 .DS_Store
 *.zip
+space_build/

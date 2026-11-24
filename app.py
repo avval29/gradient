@@ -16,6 +16,10 @@ backend = make_backend()
 encoder = make_encoder()
 LOG_PATH = os.getenv("GRADIENT_LOG", "data/private/grading_log.jsonl")
 FEEDBACK_LOG = os.getenv("GRADIENT_FEEDBACK_LOG", DEFAULT_GENERATION_LOG)
+# Public demo mode (GRADIENT_DEMO=1): nothing visitors type is saved and photo upload is switched off.
+DEMO = os.getenv("GRADIENT_DEMO") == "1"
+DEMO_NOTE = ("**Public demo.** Drafts only, built from a few short sample passages. Please do not enter real student "
+             "data: nothing you type is saved, but this is a shared public space.")
 
 EXAMPLE_RUBRIC = """# points | name | description | keywords (use | for alternatives, commas between keywords)
 2 | Inputs | Plants use sunlight, water and carbon dioxide. | sunlight|light, water, carbon dioxide|co2
@@ -38,6 +42,8 @@ def run(mode, topic, grade, difficulty):
 def _rate(rating, mode, topic, output, sources, comment):
     if not output.strip():
         return "Generate a draft first."
+    if DEMO:
+        return "Thanks! (Demo mode: feedback is not saved.)"
     log_generation_feedback(mode, topic, rating, comment, output, sources, FEEDBACK_LOG)
     return "Thanks, your feedback was saved."
 
@@ -106,13 +112,17 @@ def approve(teacher, score, feedback, state):
         final = finalize(draft, teacher, None if score is None else float(score), feedback)
     except ValueError as e:
         return f"Not saved: {e}"
-    log_final(final, draft, rubric, answer, LOG_PATH)
     note = f" (you changed the suggested {final.suggested_score:g})" if final.overridden else ""
+    if DEMO:
+        return f"Approved {final.score:g}/{final.max_score:g} by {final.teacher}{note}. Demo mode: nothing was saved."
+    log_final(final, draft, rubric, answer, LOG_PATH)
     return f"Saved: {final.score:g}/{final.max_score:g} approved by {final.teacher}{note}."
 
 
 with gr.Blocks(title="Gradient") as demo:
     gr.Markdown("# Gradient\nAI co-pilot for teachers. Drafts only; you approve and edit.")
+    if DEMO:
+        gr.Markdown(DEMO_NOTE)
     with gr.Tab("Generate"):
         with gr.Row():
             mode = gr.Dropdown(["quiz (Q&A)", "worksheet", "lesson plan"], value="quiz (Q&A)", label="Output")
@@ -135,10 +145,11 @@ with gr.Blocks(title="Gradient") as demo:
         gr.Markdown("Gradient suggests a score with evidence. **Nothing is final until you approve it.**")
         question = gr.Textbox(label="Question", value="Explain how plants make food by photosynthesis.")
         rubric_text = gr.Textbox(label="Rubric", value=EXAMPLE_RUBRIC, lines=6)
-        with gr.Accordion("Or read a handwritten answer from a photo", open=False):
-            photo = gr.Image(type="pil", label="Photo of the handwritten answer (plain paper, good light, flat)")
-            read_btn = gr.Button("Read handwriting")
-            read_note = gr.Markdown()
+        if not DEMO:  # photos of student work are not accepted in the public demo
+            with gr.Accordion("Or read a handwritten answer from a photo", open=False):
+                photo = gr.Image(type="pil", label="Photo of the handwritten answer (plain paper, good light, flat)")
+                read_btn = gr.Button("Read handwriting")
+                read_note = gr.Markdown()
         answer = gr.Textbox(label="Student answer (typed, or read from the photo: check it!)", lines=4)
         draft_btn = gr.Button("Draft grade", variant="primary")
         breakdown = gr.Markdown()
@@ -149,7 +160,8 @@ with gr.Blocks(title="Gradient") as demo:
         approve_btn = gr.Button("Approve and save")
         status = gr.Markdown()
         state = gr.State()
-        read_btn.click(read_photo, [photo], [answer, read_note])
+        if not DEMO:
+            read_btn.click(read_photo, [photo], [answer, read_note])
         draft_btn.click(draft_grade, [question, rubric_text, answer], [breakdown, final_score, final_feedback, state])
         approve_btn.click(approve, [teacher, final_score, final_feedback, state], status)
 
