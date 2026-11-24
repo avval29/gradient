@@ -4,5 +4,6 @@ transformers>=4.40
 torch
 sentence-transformers>=2.7
 pypdf>=4.0
+pillow>=10.0
 peft>=0.10
 datasets>=2.18

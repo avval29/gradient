@@ -8,7 +8,7 @@
 | 3b | Groundedness filter on generated quizzes + measured rejection rate | Module 3 (RAG), Interpretable AI | Code done; run evaluate_grounding |
 | 4a | Rubric-based draft grading of typed answers, teacher approval, override log | Module 3 (evaluation), Interpretable AI | Done |
 | 4a-eval | Benchmark the grader on the Mohler dataset vs human agreement and a median baseline | Module 3 (evaluation) | Code done; run it |
-| 4b | Handwritten answer photo -> OCR (e.g. TrOCR) -> grader | Module 1, Lab 3 | Next |
+| 4b | Handwritten answer photo -> line cutting -> TrOCR -> teacher correction -> grader | Module 1, Lab 3 | Code done; needs testing on real photos |
 | 5 | Voice dictation of lesson notes (STT) + regional-language output | Lab 4 (TTS/STT) | Planned |
 | 6 | Feedback loop (flag bad drafts), logging, monitoring | Module 4 | Planned |
 

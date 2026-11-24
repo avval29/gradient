@@ -81,11 +81,27 @@ other, an "always predict the median" baseline, and an answer-length baseline.
 python scripts/evaluate_mohler.py --n-splits 10 --out docs/mohler_eval.md   # mean ± sd over 10 random question splits
 python scripts/evaluate_mohler.py --n-splits 10 --semantic --out docs/mohler_semantic.md   # also test meaning-based similarity
 ```
-Finding so far: raw keyword-coverage scores rank answers about as well as two humans agree (Pearson ~0.5) but are
-badly scaled (they under-score by about two points), so they are calibrated before use. Rubrics are auto-built
+Findings: raw keyword-coverage scores rank answers about as well as two humans agree (Pearson ~0.5) but are
+badly scaled (they under-score by about two points), so they are calibrated before use. Meaning-based similarity
+(`--semantic`) alone did worse than keywords (QWK 0.37 vs 0.44), and combining them gave no clear gain, so semantic
+matching stays optional. Rubrics are auto-built
 from each question's reference answer, so this measures the matching engine, not what a teacher-written rubric could
 achieve. Data: Mohler, Bunescu and Mihalcea (2011), via
 [nkazi/MohlerASAG](https://huggingface.co/datasets/nkazi/MohlerASAG) (CC-BY-4.0).
+
+## Handwritten answers
+In the **Grade (draft)** tab, upload a photo of a handwritten answer. Gradient cuts the page into text lines,
+reads each with [TrOCR](https://huggingface.co/microsoft/trocr-base-handwritten), and puts the text in the answer
+box with low-confidence lines flagged. **The teacher corrects the text before it is graded**, so a reading
+mistake never silently lowers a mark.
+```bash
+python scripts/read_handwriting.py photo.jpg --segment-only --save-lines /tmp/lines   # check the line cutting (no model)
+python scripts/read_handwriting.py photo.jpg                                          # transcribe
+python scripts/evaluate_ocr.py --dir data/private/handwriting --rubric your_rubric.json --out docs/ocr_eval.md
+```
+Limits: TrOCR is trained on single lines of English handwriting; line cutting assumes dark ink on lighter paper, a
+roughly straight page and clear gaps between lines. Keep photos of real students' work out of git
+(`data/private/` is ignored). Set `GRADIENT_OCR_MODEL` to try another model.
 
 ## Project layout
 ```
@@ -96,12 +112,13 @@ gradient/
   generator.py   # prompts, grounding check, LLM backends (+ LoRA adapter loading)
   qa.py          # quiz mode: question + answer per passage
   asag.py        # Mohler benchmark helpers (grouping, auto-rubric, scoring)
+  ocr.py         # handwriting photo -> text lines -> TrOCR, with confidence
   grading.py     # rubric-based draft grading, teacher approval, feedback log
   grounding.py   # question/answer support check against the source passage
   data.py        # SQuAD -> training examples
   evaluate.py    # ROUGE / BLEU
   config.py      # env-driven factory
-scripts/          # finetune_lora.py, evaluate_model.py, evaluate_grounding.py, evaluate_grading.py, evaluate_mohler.py
+scripts/          # finetune_lora.py, evaluate_model.py, evaluate_grounding.py, evaluate_grading.py, evaluate_mohler.py, read_handwriting.py, evaluate_ocr.py
 examples/         # demo rubric and answers (not a benchmark)
 app.py           # Gradio UI
 data/sample/     # placeholder curriculum text (replace with your own NCERT notes)

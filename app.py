@@ -6,6 +6,7 @@ import gradio as gr
 
 from gradient.config import make_backend, make_encoder, make_retriever
 from gradient.generator import generate
+from gradient.ocr import doubtful_line_numbers, join_lines
 from gradient.grading import finalize, grade_answer, log_final, parse_rubric_text
 from gradient.qa import generate_quiz
 
@@ -33,6 +34,35 @@ def run(mode, topic, grade, difficulty):
 
 
 # ---------- tab 2: grade (draft only) ----------
+_reader = None
+
+
+def get_reader():
+    """Load the handwriting model on first use (large download)."""
+    global _reader
+    if _reader is None:
+        from gradient.ocr import TrOCRReader
+
+        _reader = TrOCRReader(os.getenv("GRADIENT_OCR_MODEL", "microsoft/trocr-base-handwritten"))
+    return _reader
+
+
+def read_photo(image):
+    """Transcribe a photo into the answer box. The teacher corrects it before grading."""
+    if image is None:
+        return gr.update(), "Upload a photo first."
+    lines = get_reader().read(image)
+    text = join_lines(lines)
+    if not text:
+        return gr.update(), "No handwriting found. Try a flatter, brighter photo on plain paper."
+    check = doubtful_line_numbers(lines)
+    note = f"Read {len(lines)} line(s). **Please correct the text below before grading.**"
+    if check:
+        note += " Low confidence on line(s): " + ", ".join(map(str, check)) + "."
+    return text, note
+
+
+
 def draft_grade(question, rubric_text, answer):
     if not answer.strip():
         return "Enter a student answer first.", None, "", None
@@ -81,7 +111,11 @@ with gr.Blocks(title="Gradient") as demo:
         gr.Markdown("Gradient suggests a score with evidence. **Nothing is final until you approve it.**")
         question = gr.Textbox(label="Question", value="Explain how plants make food by photosynthesis.")
         rubric_text = gr.Textbox(label="Rubric", value=EXAMPLE_RUBRIC, lines=6)
-        answer = gr.Textbox(label="Student answer (typed)", lines=4)
+        with gr.Accordion("Or read a handwritten answer from a photo", open=False):
+            photo = gr.Image(type="pil", label="Photo of the handwritten answer (plain paper, good light, flat)")
+            read_btn = gr.Button("Read handwriting")
+            read_note = gr.Markdown()
+        answer = gr.Textbox(label="Student answer (typed, or read from the photo: check it!)", lines=4)
         draft_btn = gr.Button("Draft grade", variant="primary")
         breakdown = gr.Markdown()
         with gr.Row():
@@ -91,6 +125,7 @@ with gr.Blocks(title="Gradient") as demo:
         approve_btn = gr.Button("Approve and save")
         status = gr.Markdown()
         state = gr.State()
+        read_btn.click(read_photo, [photo], [answer, read_note])
         draft_btn.click(draft_grade, [question, rubric_text, answer], [breakdown, final_score, final_feedback, state])
         approve_btn.click(approve, [teacher, final_score, final_feedback, state], status)
 
