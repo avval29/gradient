@@ -10,6 +10,7 @@ of the points, so the draft score is the (spelling/plural-tolerant) share of ref
 used. This measures the matching engine, not what a teacher-written rubric could do.
 """
 import html
+import random
 import re
 from dataclasses import dataclass, field
 
@@ -75,16 +76,43 @@ def rubric_from_reference(question: str, reference: str, max_score: float = 5.0)
     return Rubric(question, tuple(Criterion(w, w, share, (w,)) for w in words))
 
 
-def predict_scores(groups: list[QuestionGroup], max_score: float = 5.0):
-    """Draft score for every answer. Returns (predictions, gold, grader1, grader2) over questions with a usable rubric."""
-    pred, gold, g1, g2 = [], [], [], []
+@dataclass
+class ScoredAnswer:
+    pred: float    # raw draft score from the keyword-coverage rubric (0-5)
+    gold: float    # average of the two human graders (0-5)
+    grader1: float
+    grader2: float
+    words: int     # length of the student answer, for a length-only baseline
+
+
+def score_table(groups: list[QuestionGroup], max_score: float = 5.0) -> list[ScoredAnswer]:
+    """Draft-grade every answer (skipping questions whose reference answer has no content words)."""
+    table = []
     for g in groups:
         rubric = rubric_from_reference(g.question, g.reference, max_score)
         if rubric is None:
             continue
         for answer, score, a, b in zip(g.answers, g.scores, g.grader1, g.grader2):
-            pred.append(grade_answer(answer, rubric).suggested_score)
-            gold.append(score)
-            g1.append(a)
-            g2.append(b)
-    return pred, gold, g1, g2
+            table.append(ScoredAnswer(grade_answer(answer, rubric).suggested_score, score, a, b, len(answer.split())))
+    return table
+
+
+def predict_scores(groups: list[QuestionGroup], max_score: float = 5.0):
+    """Returns (predictions, gold, grader1, grader2) lists."""
+    t = score_table(groups, max_score)
+    return [x.pred for x in t], [x.gold for x in t], [x.grader1 for x in t], [x.grader2 for x in t]
+
+
+def split_by_question(groups: list[QuestionGroup], dev_fraction: float = 0.5, seed: int = 42):
+    """Disjoint dev/test split BY QUESTION, so calibration is evaluated on questions it has never seen."""
+    idx = list(range(len(groups)))
+    random.Random(seed).shuffle(idx)
+    cut = round(len(groups) * dev_fraction)
+    return [groups[i] for i in sorted(idx[:cut])], [groups[i] for i in sorted(idx[cut:])]
+
+
+def fit_calibrator(raw: list[float], gold: list[float]):
+    """Monotone (isotonic) map from a raw score or feature to the mark humans give. Fit on dev data only."""
+    from sklearn.isotonic import IsotonicRegression
+
+    return IsotonicRegression(y_min=0, y_max=5, increasing=True, out_of_bounds="clip").fit(raw, gold)

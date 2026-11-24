@@ -71,6 +71,21 @@ python scripts/evaluate_grading.py --rubric your_rubric.json --csv your_graded_a
 ```
 `examples/` contains hand-written demo data only; do not quote accuracy from it.
 
+## Benchmarking the grader on real data
+`scripts/evaluate_mohler.py` scores Gradient's matching engine on the public Mohler short-answer dataset
+(2,273 real student answers to computer-science questions, each marked 0-5 by two graders). Questions are split
+into a development half and a disjoint test half; calibration is fitted on the development half only and every
+reported number is measured on the unseen test questions. It is compared with two human graders agreeing with each
+other, an "always predict the median" baseline, and an answer-length baseline.
+```bash
+python scripts/evaluate_mohler.py --out docs/mohler_eval.md
+```
+Finding so far: raw keyword-coverage scores rank answers about as well as two humans agree (Pearson ~0.5) but are
+badly scaled (they under-score by about two points), so they are calibrated before use. Rubrics are auto-built
+from each question's reference answer, so this measures the matching engine, not what a teacher-written rubric could
+achieve. Data: Mohler, Bunescu and Mihalcea (2011), via
+[nkazi/MohlerASAG](https://huggingface.co/datasets/nkazi/MohlerASAG) (CC-BY-4.0).
+
 ## Project layout
 ```
 gradient/
@@ -79,12 +94,13 @@ gradient/
   ingest.py      # .txt/.md/.pdf loader
   generator.py   # prompts, grounding check, LLM backends (+ LoRA adapter loading)
   qa.py          # quiz mode: question + answer per passage
+  asag.py        # Mohler benchmark helpers (grouping, auto-rubric, scoring)
   grading.py     # rubric-based draft grading, teacher approval, feedback log
   grounding.py   # question/answer support check against the source passage
   data.py        # SQuAD -> training examples
   evaluate.py    # ROUGE / BLEU
   config.py      # env-driven factory
-scripts/          # finetune_lora.py, evaluate_model.py, evaluate_grounding.py, evaluate_grading.py
+scripts/          # finetune_lora.py, evaluate_model.py, evaluate_grounding.py, evaluate_grading.py, evaluate_mohler.py
 examples/         # demo rubric and answers (not a benchmark)
 app.py           # Gradio UI
 data/sample/     # placeholder curriculum text (replace with your own NCERT notes)

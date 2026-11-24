@@ -60,3 +60,37 @@ def test_agreement_rounds_halves_up_not_to_even():
     from gradient.evaluate import agreement
 
     assert agreement([2.5, 3.5, 4.5], [3, 4, 5])["exact"] == 100
+
+
+def _many_groups(n=10):
+    rows = []
+    for q in range(n):
+        ref = f"term{q} alpha beta gamma delta"
+        for a, (text, sc) in enumerate([(f"term{q} alpha beta gamma delta", 5), (f"term{q} alpha", 3), ("nothing", 0)]):
+            rows.append(row(f"E01.Q{q:02d}.A{a:02d}", text, sc, q=f"Q{q}", ref=ref))
+    return group_rows(rows)
+
+
+def test_split_by_question_is_disjoint_complete_and_seeded():
+    from gradient.asag import split_by_question
+
+    groups = _many_groups()
+    dev, test = split_by_question(groups, 0.5, 42)
+    assert {g.key for g in dev}.isdisjoint({g.key for g in test})
+    assert len(dev) + len(test) == len(groups) and len(dev) == 5
+    assert [g.key for g in split_by_question(groups, 0.5, 42)[0]] == [g.key for g in dev]
+
+
+def test_score_table_aligns_fields():
+    from gradient.asag import score_table
+
+    t = score_table(_many_groups(2))
+    assert len(t) == 6 and t[0].gold == 5 and t[0].words == 5 and t[0].pred > t[1].pred > t[2].pred
+
+
+def test_calibrator_is_monotone_and_fixes_scale():
+    from gradient.asag import fit_calibrator
+
+    cal = fit_calibrator([0, 1, 2, 3, 4, 5], [3, 3.5, 4, 4.5, 4.5, 5])  # humans are more generous than raw scores
+    out = list(cal.predict([0, 2.5, 5, 99]))
+    assert out == sorted(out) and out[-1] == 5  # monotone, clipped beyond the training range
