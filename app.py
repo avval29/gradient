@@ -5,6 +5,7 @@ import os
 import gradio as gr
 
 from gradient.config import make_backend, make_encoder, make_retriever
+from gradient.feedback import DEFAULT_GENERATION_LOG, log_generation_feedback
 from gradient.generator import generate
 from gradient.ocr import doubtful_line_numbers, join_lines
 from gradient.grading import finalize, grade_answer, log_final, parse_rubric_text
@@ -14,6 +15,7 @@ retriever = make_retriever()
 backend = make_backend()
 encoder = make_encoder()
 LOG_PATH = os.getenv("GRADIENT_LOG", "data/private/grading_log.jsonl")
+FEEDBACK_LOG = os.getenv("GRADIENT_FEEDBACK_LOG", DEFAULT_GENERATION_LOG)
 
 EXAMPLE_RUBRIC = """# points | name | description | keywords (use | for alternatives, commas between keywords)
 2 | Inputs | Plants use sunlight, water and carbon dioxide. | sunlight|light, water, carbon dioxide|co2
@@ -31,6 +33,21 @@ def run(mode, topic, grade, difficulty):
     if res.rejected:
         status += f" | {res.rejected} question(s) dropped: not supported by your notes"
     return res.text, status
+
+
+def _rate(rating, mode, topic, output, sources, comment):
+    if not output.strip():
+        return "Generate a draft first."
+    log_generation_feedback(mode, topic, rating, comment, output, sources, FEEDBACK_LOG)
+    return "Thanks, your feedback was saved."
+
+
+def thumbs_up(mode, topic, output, sources, comment):
+    return _rate("up", mode, topic, output, sources, comment)
+
+
+def thumbs_down(mode, topic, output, sources, comment):
+    return _rate("down", mode, topic, output, sources, comment)
 
 
 # ---------- tab 2: grade (draft only) ----------
@@ -106,6 +123,13 @@ with gr.Blocks(title="Gradient") as demo:
         out = gr.Textbox(label="Draft (editable)", lines=14, interactive=True)
         src = gr.Textbox(label="Sources", interactive=False)
         btn.click(run, [mode, topic, grade, difficulty], [out, src])
+        with gr.Row():
+            up_btn = gr.Button("👍 Useful draft")
+            down_btn = gr.Button("👎 Needs work")
+        fb_comment = gr.Textbox(label="What was good or wrong? (optional)")
+        fb_status = gr.Markdown()
+        up_btn.click(thumbs_up, [mode, topic, out, src, fb_comment], fb_status)
+        down_btn.click(thumbs_down, [mode, topic, out, src, fb_comment], fb_status)
 
     with gr.Tab("Grade (draft)"):
         gr.Markdown("Gradient suggests a score with evidence. **Nothing is final until you approve it.**")
