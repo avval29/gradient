@@ -14,6 +14,8 @@ import random
 import re
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from gradient.grading import Criterion, Rubric, grade_answer
 from gradient.grounding import STOPWORDS, content_tokens
 
@@ -83,17 +85,28 @@ class ScoredAnswer:
     grader1: float
     grader2: float
     words: int     # length of the student answer, for a length-only baseline
+    cos: float | None = None  # cosine similarity to the reference answer (only when an encoder is given)
 
 
-def score_table(groups: list[QuestionGroup], max_score: float = 5.0) -> list[ScoredAnswer]:
-    """Draft-grade every answer (skipping questions whose reference answer has no content words)."""
+def cosines_to_reference(reference: str, answers: list[str], encoder) -> list[float]:
+    """Cosine similarity between each answer and the reference answer, using any encoder(list[str]) -> array."""
+    vecs = np.asarray(encoder([reference] + answers), dtype=float)
+    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+    vecs = vecs / np.where(norms == 0, 1, norms)
+    return [float(c) for c in vecs[1:] @ vecs[0]]
+
+
+def score_table(groups: list[QuestionGroup], max_score: float = 5.0, encoder=None) -> list[ScoredAnswer]:
+    """Draft-grade every answer (skipping questions whose reference answer has no content words).
+    With an encoder, each row also carries its semantic similarity to the reference answer."""
     table = []
     for g in groups:
         rubric = rubric_from_reference(g.question, g.reference, max_score)
         if rubric is None:
             continue
-        for answer, score, a, b in zip(g.answers, g.scores, g.grader1, g.grader2):
-            table.append(ScoredAnswer(grade_answer(answer, rubric).suggested_score, score, a, b, len(answer.split())))
+        cos = cosines_to_reference(g.reference, g.answers, encoder) if encoder is not None else [None] * len(g.answers)
+        for answer, score, a, b, c in zip(g.answers, g.scores, g.grader1, g.grader2, cos):
+            table.append(ScoredAnswer(grade_answer(answer, rubric).suggested_score, score, a, b, len(answer.split()), c))
     return table
 
 

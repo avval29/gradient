@@ -1,6 +1,7 @@
 """Benchmark the Gradient grading engine on the Mohler short-answer dataset.
 
-Usage: python scripts/evaluate_mohler.py --out docs/mohler_eval.md
+Usage: python scripts/evaluate_mohler.py --n-splits 10 --out docs/mohler_eval.md
+       add --semantic to also test meaning-based similarity (first run downloads a ~90 MB model)
 Needs: pip install datasets   (small download from Hugging Face)
 
 Questions are split into a development half and a test half (disjoint). Calibrations are fitted on the
@@ -19,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from gradient.asag import fit_calibrator, group_rows, score_table, split_by_question  # noqa: E402
+from gradient.embeddings import sentence_transformer_encoder  # noqa: E402
 from gradient.evaluate import agreement  # noqa: E402
 
 
@@ -26,10 +28,11 @@ def fmt(x, nd=2):
     return "n/a" if x is None else f"{x:.{nd}f}"
 
 
-def evaluate_split(groups, seed, dev_fraction):
-    """Run every system on one dev/test split by question. Returns (systems, info)."""
+def evaluate_split(groups, tables, seed, dev_fraction, semantic=False):
+    """Run every system on one dev/test split by question. `tables` maps question key -> its scored answers."""
     dev_groups, test_groups = split_by_question(groups, dev_fraction, seed)
-    dev, test = score_table(dev_groups), score_table(test_groups)
+    dev = [x for g in dev_groups for x in tables[g.key]]
+    test = [x for g in test_groups for x in tables[g.key]]
     gold = [x.gold for x in test]
     median = statistics.median(x.gold for x in dev)
     grade_cal = fit_calibrator([x.pred for x in dev], [x.gold for x in dev])
@@ -38,9 +41,22 @@ def evaluate_split(groups, seed, dev_fraction):
         ("Human: grader 2 vs grader 1", agreement([x.grader2 for x in test], [x.grader1 for x in test])),
         ("Baseline: always predict the dev median", agreement([median] * len(test), gold)),
         ("Baseline: answer length (calibrated)", agreement(list(length_cal.predict([x.words for x in test])), gold)),
+    ]
+    if semantic:
+        from sklearn.linear_model import LinearRegression
+
+        sem_cal = fit_calibrator([x.cos for x in dev], [x.gold for x in dev])
+        systems.append(("Semantic similarity to reference (calibrated)",
+                        agreement(list(sem_cal.predict([x.cos for x in test])), gold)))
+    systems += [
         ("Gradient: raw keyword-coverage score", agreement([x.pred for x in test], gold)),
         ("Gradient: calibrated on dev questions", agreement(list(grade_cal.predict([x.pred for x in test])), gold)),
     ]
+    if semantic:
+        feats = lambda rows: [[x.pred, x.cos] for x in rows]  # noqa: E731
+        combo = LinearRegression().fit(feats(dev), [x.gold for x in dev])
+        pred = [min(5.0, max(0.0, float(v))) for v in combo.predict(feats(test))]
+        systems.append(("Gradient: keyword + semantic combined (linear fit on dev)", agreement(pred, gold)))
     info = dict(n_dev=len(dev), n_test=len(test), q_dev=len(dev_groups), q_test=len(test_groups), median=median)
     return systems, info
 
@@ -60,13 +76,17 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--n-splits", type=int, default=1, help="repeat with this many different random question splits")
     ap.add_argument("--dev-fraction", type=float, default=0.5)
+    ap.add_argument("--semantic", action="store_true",
+                    help="also test semantic similarity (downloads a small sentence-transformers model)")
     args = ap.parse_args(argv)
 
     from datasets import load_dataset
 
     groups = group_rows(list(load_dataset("nkazi/MohlerASAG", name="raw", split="open_ended")))
     seeds = [args.seed + i for i in range(args.n_splits)]
-    runs = [evaluate_split(groups, sd, args.dev_fraction) for sd in seeds]
+    encoder = sentence_transformer_encoder() if args.semantic else None
+    tables = {g.key: score_table([g], encoder=encoder) for g in groups}  # scored once, reused by every split
+    runs = [evaluate_split(groups, tables, sd, args.dev_fraction, semantic=args.semantic) for sd in seeds]
     info = runs[0][1]
     header = ["| System | MAE (lower is better) | Pearson r | Within 1 point | QWK |", "|---|---|---|---|---|"]
 

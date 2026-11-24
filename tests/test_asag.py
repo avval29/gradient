@@ -94,3 +94,23 @@ def test_calibrator_is_monotone_and_fixes_scale():
     cal = fit_calibrator([0, 1, 2, 3, 4, 5], [3, 3.5, 4, 4.5, 4.5, 5])  # humans are more generous than raw scores
     out = list(cal.predict([0, 2.5, 5, 99]))
     assert out == sorted(out) and out[-1] == 5  # monotone, clipped beyond the training range
+
+
+def _bow_encoder(texts, dim=256):
+    import zlib
+
+    import numpy as np
+
+    out = np.zeros((len(texts), dim))
+    for i, t in enumerate(texts):
+        for w in t.lower().split():
+            out[i, zlib.crc32(w.encode()) % dim] += 1
+    return out
+
+
+def test_score_table_adds_semantic_similarity_when_encoder_given():
+    from gradient.asag import score_table
+
+    t = score_table(_many_groups(2), encoder=_bow_encoder)
+    assert t[0].cos == pytest.approx(1.0) and t[0].cos > t[1].cos > t[2].cos
+    assert score_table(_many_groups(2))[0].cos is None
