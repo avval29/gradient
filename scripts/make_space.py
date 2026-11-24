@@ -53,7 +53,7 @@ short_description: Grounded quizzes and teacher-approved draft grading
 # Gradient (demo)
 
 An AI co-pilot for teachers: quizzes grounded in curriculum text, and rubric-based draft grading where the
-teacher approves every grade. This demo runs in {mode} and nothing you enter is saved.
+teacher approves every grade. This demo runs in {mode}. Gradient does not persist visitor inputs; the hosting platform may process operational data under its own policies.
 Source code, tests and evaluation results: https://github.com/avval29/gradient
 """, encoding="utf-8")
     return out

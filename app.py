@@ -16,10 +16,11 @@ backend = make_backend()
 encoder = make_encoder()
 LOG_PATH = os.getenv("GRADIENT_LOG", "data/private/grading_log.jsonl")
 FEEDBACK_LOG = os.getenv("GRADIENT_FEEDBACK_LOG", DEFAULT_GENERATION_LOG)
-# Public demo mode (GRADIENT_DEMO=1): nothing visitors type is saved and photo upload is switched off.
+# Public demo mode disables app-level persistence and photo upload.
 DEMO = os.getenv("GRADIENT_DEMO") == "1"
 DEMO_NOTE = ("**Public demo.** Drafts only, built from a few short sample passages. Please do not enter real student "
-             "data: nothing you type is saved, but this is a shared public space.")
+             "data: Gradient does not persist your inputs in demo mode. This is a shared hosted space; the hosting "
+             "platform may process operational data under its own policies.")
 
 EXAMPLE_RUBRIC = """# points | name | description | keywords (use | for alternatives, commas between keywords)
 2 | Inputs | Plants use sunlight, water and carbon dioxide. | sunlight|light, water, carbon dioxide|co2
@@ -157,7 +158,9 @@ with gr.Blocks(title="Gradient") as demo:
             teacher = gr.Textbox(label="Your name (required to approve)")
             final_score = gr.Number(label="Final score (edit if you disagree)")
         final_feedback = gr.Textbox(label="Feedback to student (editable)", lines=4)
-        approve_btn = gr.Button("Approve and save")
+        approve_btn = gr.Button(
+            "Approve draft (demo — not saved)" if DEMO else "Approve and save"
+        )
         status = gr.Markdown()
         state = gr.State()
         if not DEMO:
